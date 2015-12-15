@@ -34,6 +34,8 @@ public class CoflowSim {
         sharingAlgo = SHARING_ALGO.LCF;
       } else if (UPPER_ARG.contains("SEBF")) {
         sharingAlgo = SHARING_ALGO.SEBF;
+      } else if (UPPER_ARG.contains("BETA")) {
+        sharingAlgo = SHARING_ALGO.BETA;
       } else if (UPPER_ARG.contains("DARK")) {
         sharingAlgo = SHARING_ALGO.DARK;
       } else {

@@ -38,7 +38,8 @@ public class CoflowSimulator extends Simulator {
 
     super(sharingAlgo, traceProducer, offline, considerDeadline, deadlineMultRandomFactor);
     assert (sharingAlgo == SHARING_ALGO.FIFO || sharingAlgo == SHARING_ALGO.SCF
-        || sharingAlgo == SHARING_ALGO.NCF || sharingAlgo == SHARING_ALGO.LCF || sharingAlgo == SHARING_ALGO.SEBF);
+        || sharingAlgo == SHARING_ALGO.NCF || sharingAlgo == SHARING_ALGO.LCF
+            || sharingAlgo == SHARING_ALGO.SEBF || sharingAlgo == SHARING_ALGO.BETA);
   }
 
   /** {@inheritDoc} */
@@ -412,7 +413,7 @@ public class CoflowSimulator extends Simulator {
     }
 
     if (sharingAlgo == SHARING_ALGO.FIFO) {
-      sortedJobs.add(j);
+      sortedJobs.add(j); // mons: 先进先出原则,因此不用插队,直接排在队列最后边
     } else {
       int index = 0;
       for (Job sj : sortedJobs) {
@@ -424,8 +425,11 @@ public class CoflowSimulator extends Simulator {
           break;
         } else if (sharingAlgo == SHARING_ALGO.SEBF && SEBFComparator.compare(j, sj) < 0) {
           break;
+        } else if (sharingAlgo == SHARING_ALGO.BETA && BETAComparator.compare(j, sj) < 0) {
+          break;
         }
         index++;
+          // mons: 能走到这一行说明任务 j 比 sj "大"(是大是小根据调度算法的 Comparator 返回值决定),所以需要继续一个一个往后比较
       }
       sortedJobs.insertElementAt(j, index);
     }
@@ -505,6 +509,9 @@ public class CoflowSimulator extends Simulator {
   /**
    * Comparator used by {@link CoflowSimulator#addToSortedJobs(Job)} to add new job in list sorted
    * by coflow length.
+   *
+   * SCF: Shortest Coflow First
+   * 在 Shuffle bytes of reduce-r 中取最大值,除以 mappers 数量,值小的 Coflow 优先
    */
   private static Comparator<Job> SCFComparator = new Comparator<Job>() {
     public int compare(Job o1, Job o2) {
@@ -516,6 +523,9 @@ public class CoflowSimulator extends Simulator {
   /**
    * Comparator used by {@link CoflowSimulator#addToSortedJobs(Job)} to add new job in list sorted
    * by coflow size.
+   *
+   * LCF: Lightest Coflow First
+   * 剩余 Shuffle 量最小的 Coflow 优先
    */
   private static Comparator<Job> LCFComparator = new Comparator<Job>() {
     public int compare(Job o1, Job o2) {
@@ -529,10 +539,14 @@ public class CoflowSimulator extends Simulator {
   /**
    * Comparator used by {@link CoflowSimulator#addToSortedJobs(Job)} to add new job in list sorted
    * by the minimum number of endpoints of a coflow.
+   *
+   * NCF: Narrowest Coflow First
+   * Mappers / Reducers 最少的 Coflow 优先(不完整)
    */
   private static Comparator<Job> NCFComparator = new Comparator<Job>() {
     public int compare(Job o1, Job o2) {
       int n1 = (o1.numMappers < o1.numReducers) ? o1.numMappers : o1.numReducers;
+        // mons: 比较 Job o1 的 mappers 和 reducers 个数,哪个小就取哪个
       int n2 = (o2.numMappers < o2.numReducers) ? o2.numMappers : o2.numReducers;
       return n1 - n2;
     }
@@ -541,8 +555,22 @@ public class CoflowSimulator extends Simulator {
   /**
    * Comparator used by {@link CoflowSimulator#addToSortedJobs(Job)} to add new job in list sorted
    * by static coflow skew.
+   *
+   * SEBF: Smallest Effective Bottleneck First / Smallest Skew First
+   * alpha 小的 Coflow 优先.alpha 的定义即是 sigcomm14 varys 论文 P5 公式(1) 中 大写Gamma
    */
   private static Comparator<Job> SEBFComparator = new Comparator<Job>() {
+    public int compare(Job o1, Job o2) {
+      if (o1.alpha == o2.alpha) return 0;
+      return o1.alpha < o2.alpha ? -1 : 1;
+    }
+  };
+
+  /**
+   * Comparator used by {@link CoflowSimulator#addToSortedJobs(Job)} to add new job in list sorted
+   * by Coflow size 从小到大排序
+   */
+  private static Comparator<Job> BETAComparator = new Comparator<Job>() {
     public int compare(Job o1, Job o2) {
       if (o1.alpha == o2.alpha) return 0;
       return o1.alpha < o2.alpha ? -1 : 1;
