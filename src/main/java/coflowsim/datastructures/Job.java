@@ -1,11 +1,15 @@
 package coflowsim.datastructures;
 
-import java.util.Arrays;
-import java.util.Vector;
-
 import coflowsim.datastructures.Task.TaskType;
 import coflowsim.utils.Constants;
 import coflowsim.utils.Utils;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.Vector;
 
 /**
  * Information about individual Job/Coflow.
@@ -461,6 +465,19 @@ public class Job implements Comparable<Job> {
 
     // Calculate deadline in millis
     deadlineDuration = alpha / Constants.RACK_BYTES_PER_SEC * deadlineMult * 1000;
+
+    try {
+      writeDebugDataToFile();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public void writeDebugDataToFile() throws IOException{
+    PrintWriter outFile = new PrintWriter(new FileOutputStream(new File("Result.txt"), true));
+    outFile.printf("%s: alpha = %f, deadlineDuration = %f\n", jobName, alpha, deadlineDuration);
+    outFile.close();
+    //System.err.printf("%s: alpha = %lf, deadlineDuration = %lf\n", jobName, deadlineDuration);
   }
 
   /**
