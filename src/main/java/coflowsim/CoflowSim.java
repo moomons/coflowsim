@@ -14,6 +14,9 @@ import coflowsim.utils.Constants.SHARING_ALGO;
 public class CoflowSim {
 
   public static void main(String[] args) {
+
+    System.err.printf("Program started.\n");
+
     int curArg = 0;
 
     SHARING_ALGO sharingAlgo = SHARING_ALGO.FAIR;
@@ -39,9 +42,11 @@ public class CoflowSim {
       } else if (UPPER_ARG.contains("DARK")) {
         sharingAlgo = SHARING_ALGO.DARK;
       } else {
-        System.err.println("Unsupported or Wrong Sharing Algorithm");
+        System.err.printf("Unsupported or Wrong Sharing Algorithm\n");
         System.exit(1);
       }
+
+      System.err.printf("Algorithm: " + UPPER_ARG + "\n");
     }
 
     boolean isOffline = false;
